@@ -1,0 +1,38 @@
+{
+  "maximum_seed": 10000,
+  "runs_per_seed": 2,
+  "turns_per_run": 20,
+  "total_engine_runs": 20000,
+  "total_turns": 400000,
+  "elapsed_seconds": 14.3512971,
+  "mismatches": 0,
+  "distinct_trajectories": 10000,
+  "rng_consumed": 10000,
+  "seeds_per_second": 696.801127474394,
+  "checkpoints": [
+    {
+      "seeds": 100,
+      "elapsed_seconds": 0.5792514,
+      "mismatches": 0,
+      "distinct_trajectories": 100,
+      "rng_consumed": 100,
+      "seeds_per_second": 172.6366133944605
+    },
+    {
+      "seeds": 1000,
+      "elapsed_seconds": 2.691057,
+      "mismatches": 0,
+      "distinct_trajectories": 1000,
+      "rng_consumed": 1000,
+      "seeds_per_second": 371.6011961099301
+    },
+    {
+      "seeds": 10000,
+      "elapsed_seconds": 14.3512608,
+      "mismatches": 0,
+      "distinct_trajectories": 10000,
+      "rng_consumed": 10000,
+      "seeds_per_second": 696.8028899593268
+    }
+  ]
+}

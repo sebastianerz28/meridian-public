@@ -1,0 +1,11 @@
+{
+  "seeds": 40,
+  "runs_per_seed": 2,
+  "total_process_runs": 80,
+  "elapsed_seconds": 24.2151496,
+  "mismatches": 0,
+  "distinct_stdout_trajectories": 1,
+  "distinct_database_files": 40,
+  "mean_pair_seconds": 0.6013115499999999,
+  "pairs_per_second": 1.651858471277006
+}

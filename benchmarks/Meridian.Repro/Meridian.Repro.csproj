@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- TargetFramework intentionally omitted: inherited from ../../Directory.Build.props
+       (net8.0) to prove the benchmark bundle rides the same framework/analyzer settings
+       as the rest of the solution rather than pinning its own. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Meridian.Repro</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Game.Contracts\Game.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Game.Simulation\Game.Simulation.csproj" />
+    <ProjectReference Include="..\..\src\Game.Persistence\Game.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Game.Headless\Game.Headless.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Same version Game.Persistence pins. Needed directly (not just transitively) so
+         FullProcessFingerprint.cs can read a run.db's raw snapshot JSON column text via SQL:
+         GameStore.LoadLatestSnapshot only exposes the parsed objects, not the verbatim text
+         the canonical database fingerprint needs. -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
+  </ItemGroup>
+
+</Project>

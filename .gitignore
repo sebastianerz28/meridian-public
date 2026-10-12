@@ -1,0 +1,38 @@
+# .NET build output
+**/bin/
+**/obj/
+artifacts/
+
+# Visual Studio / user-local project state
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Tests and coverage
+TestResults/
+coverage/
+coverage*.json
+coverage*.xml
+*.coverage
+*.coveragexml
+
+# Meridian runtime data
+*.db
+*.db-shm
+*.db-wal
+
+# Godot generated state
+.godot/
+
+# Local agent/worktree tooling
+.claude/
+.superpowers/
+
+# Local environment and OS files
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db

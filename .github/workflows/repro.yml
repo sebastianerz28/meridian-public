@@ -1,0 +1,177 @@
+name: repro
+
+# Portable acceptance criterion for this workflow (see benchmarks/Meridian.Repro/README.md
+# for the full spec): a reproduction is accepted when, across the two OSes in the matrix,
+#   1. zero same-seed repeat mismatches on EITHER OS (for full-process: zero STDOUT mismatches
+#      AND zero DATABASE mismatches, checked independently -- neither side can hide behind the
+#      other agreeing), and
+#   2. the aggregate proof hash (aggregate_fingerprint) is IDENTICAL across OSes -- which, by
+#      construction of the fingerprint spec, implies identical per-seed event streams and
+#      identical final canonical world states, not just a coincidental hash collision. For
+#      full-process this is the CANONICAL (portable) aggregate -- raw SQLite-file/stdout byte
+#      hashes are a same-environment result only and are never compared across OSes.
+# Wall-clock timing and raw (same-environment) artifact hashes are recorded in the uploaded
+# manifests for information only and are never compared or gated on.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      full:
+        description: "Run the full 10,000-seed stochastic-spy-probe sweep instead of the 100-seed smoke size"
+        type: boolean
+        default: false
+
+jobs:
+  repro:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: dotnet test
+        run: dotnet test -c Release
+
+      - name: dotnet build (Release) -- required for full-process, which spawns the built binary rather than building it
+        run: dotnet build -c Release
+
+      - name: Run narrative (40 seeds x 2 repeats)
+        run: >
+          dotnet run -c Release --no-build --project benchmarks/Meridian.Repro --
+          --scenario narrative --seeds 40 --repeats 2 --turns 20 --output artifacts/repro
+
+      - name: Run stochastic-spy-probe
+        run: >
+          dotnet run -c Release --no-build --project benchmarks/Meridian.Repro --
+          --scenario stochastic-spy-probe
+          --seeds ${{ (github.event_name == 'workflow_dispatch' && inputs.full) && '10000' || '100' }}
+          --repeats 2 --turns 20 --output artifacts/repro
+
+      - name: Run full-process (10 seeds x 2 repeats -- CI-scale smoke; the full 40-seed recorded scale runs via --verify below)
+        run: >
+          dotnet run -c Release --no-build --project benchmarks/Meridian.Repro --
+          --scenario full-process --seeds 10 --repeats 2 --turns 20 --output artifacts/repro
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repro-${{ matrix.os }}
+          path: artifacts/repro
+
+      # The full-process aggregate is now built from CANONICAL (portable) fingerprints, so --
+      # unlike before this correction -- it's meaningful to reproduce expected_hashes.json's
+      # recorded ground truth (including full-process at its recorded 40-seed scale) in CI on
+      # both OSes, not just the CI-scale smoke run above. A non-zero exit here fails the job.
+      - name: Run --verify against expected_hashes.json (all recorded scenarios, incl. full-process @ 40 seeds)
+        run: >
+          dotnet run -c Release --no-build --project benchmarks/Meridian.Repro --
+          --verify --output artifacts/repro-verify
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repro-verify-${{ matrix.os }}
+          path: artifacts/repro-verify
+
+  compare:
+    needs: repro
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: repro-windows-latest
+          path: windows
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: repro-ubuntu-latest
+          path: ubuntu
+
+      - name: Compare manifests across OSes
+        shell: bash
+        run: |
+          set -u
+          fail=0
+
+          for scenario in narrative stochastic-spy-probe full-process; do
+            windows_manifest="windows/${scenario}-manifest.json"
+            ubuntu_manifest="ubuntu/${scenario}-manifest.json"
+
+            if [[ ! -f "$windows_manifest" || ! -f "$ubuntu_manifest" ]]; then
+              echo "::error::missing manifest for '$scenario' (windows='$windows_manifest' ubuntu='$ubuntu_manifest')"
+              fail=1
+              continue
+            fi
+
+            windows_mismatches=$(jq -r '.mismatches' "$windows_manifest")
+            ubuntu_mismatches=$(jq -r '.mismatches' "$ubuntu_manifest")
+            windows_aggregate=$(jq -r '.aggregate_fingerprint' "$windows_manifest")
+            ubuntu_aggregate=$(jq -r '.aggregate_fingerprint' "$ubuntu_manifest")
+            windows_elapsed=$(jq -r '.elapsed_seconds' "$windows_manifest")
+            ubuntu_elapsed=$(jq -r '.elapsed_seconds' "$ubuntu_manifest")
+
+            echo "== $scenario =="
+            echo "  windows: mismatches=$windows_mismatches aggregate=$windows_aggregate elapsed_seconds=$windows_elapsed (timing reported only, not compared)"
+            echo "  ubuntu:  mismatches=$ubuntu_mismatches aggregate=$ubuntu_aggregate elapsed_seconds=$ubuntu_elapsed (timing reported only, not compared)"
+
+            if [[ "$windows_mismatches" != "0" ]]; then
+              echo "::error::$scenario: windows-latest had $windows_mismatches same-seed repeat mismatch(es) (expected 0)"
+              fail=1
+            fi
+            if [[ "$ubuntu_mismatches" != "0" ]]; then
+              echo "::error::$scenario: ubuntu-latest had $ubuntu_mismatches same-seed repeat mismatch(es) (expected 0)"
+              fail=1
+            fi
+            if [[ "$windows_aggregate" != "$ubuntu_aggregate" ]]; then
+              echo "::error::$scenario: aggregate_fingerprint differs across OS -- windows=$windows_aggregate ubuntu=$ubuntu_aggregate"
+              fail=1
+            fi
+
+            # full-process only: stdout and database mismatches are tracked independently (a
+            # database-only or stdout-only divergence must each be caught on its own), and the
+            # RAW (same-environment) database file hash count is reported for information only
+            # -- it is NOT expected to be comparable across OSes, unlike the CANONICAL aggregate
+            # asserted above.
+            if [[ "$scenario" == "full-process" ]]; then
+              windows_stdout_mismatches=$(jq -r '.stdout_mismatches' "$windows_manifest")
+              ubuntu_stdout_mismatches=$(jq -r '.stdout_mismatches' "$ubuntu_manifest")
+              windows_db_mismatches=$(jq -r '.database_mismatches' "$windows_manifest")
+              ubuntu_db_mismatches=$(jq -r '.database_mismatches' "$ubuntu_manifest")
+              windows_raw_db_files=$(jq -r '.distinct_database_files' "$windows_manifest")
+              ubuntu_raw_db_files=$(jq -r '.distinct_database_files' "$ubuntu_manifest")
+
+              echo "  windows: stdout_mismatches=$windows_stdout_mismatches database_mismatches=$windows_db_mismatches distinct_database_files=$windows_raw_db_files (raw/diagnostic, reported only, not compared)"
+              echo "  ubuntu:  stdout_mismatches=$ubuntu_stdout_mismatches database_mismatches=$ubuntu_db_mismatches distinct_database_files=$ubuntu_raw_db_files (raw/diagnostic, reported only, not compared)"
+
+              if [[ "$windows_stdout_mismatches" != "0" ]]; then
+                echo "::error::full-process: windows-latest had $windows_stdout_mismatches stdout repeat mismatch(es) (expected 0)"
+                fail=1
+              fi
+              if [[ "$ubuntu_stdout_mismatches" != "0" ]]; then
+                echo "::error::full-process: ubuntu-latest had $ubuntu_stdout_mismatches stdout repeat mismatch(es) (expected 0)"
+                fail=1
+              fi
+              if [[ "$windows_db_mismatches" != "0" ]]; then
+                echo "::error::full-process: windows-latest had $windows_db_mismatches database repeat mismatch(es) (expected 0)"
+                fail=1
+              fi
+              if [[ "$ubuntu_db_mismatches" != "0" ]]; then
+                echo "::error::full-process: ubuntu-latest had $ubuntu_db_mismatches database repeat mismatch(es) (expected 0)"
+                fail=1
+              fi
+            fi
+          done
+
+          if [[ "$fail" != "0" ]]; then
+            echo "::error::cross-platform reproduction FAILED -- see diff above"
+          else
+            echo "cross-platform reproduction OK: identical canonical aggregate fingerprints, zero mismatches, both OSes"
+          fi
+          exit "$fail"

@@ -1,0 +1,41 @@
+{
+  "simulation_commit": "",
+  "generated_utc": "2026-08-18T04:30:00Z",
+  "entries": [
+    {
+      "scenario": "narrative",
+      "seeds": 40,
+      "repeats": 2,
+      "turns": 20,
+      "aggregate_fingerprint": "7ee8b6b6ebfb058e6c6f75fa4b4034b32c20bfa7ca42f9c6119bfe0c43ccb5f3"
+    },
+    {
+      "scenario": "stochastic-spy-probe",
+      "seeds": 100,
+      "repeats": 2,
+      "turns": 20,
+      "aggregate_fingerprint": "c687a47041715bdc3501c0a141562e1dcde17b20fd1c74c82ec717a8a7fc1759"
+    },
+    {
+      "scenario": "stochastic-spy-probe",
+      "seeds": 1000,
+      "repeats": 2,
+      "turns": 20,
+      "aggregate_fingerprint": "21d16eb8572f774fd92b7ec7f0aec6810c4710884a22c9248e50641791d4dd47"
+    },
+    {
+      "scenario": "stochastic-spy-probe",
+      "seeds": 10000,
+      "repeats": 2,
+      "turns": 20,
+      "aggregate_fingerprint": "58204f1f5aec3655b22d45091f2af85ca7dda8d9e30714fa7dfd200cc798f2a1"
+    },
+    {
+      "scenario": "full-process",
+      "seeds": 40,
+      "repeats": 2,
+      "turns": 20,
+      "aggregate_fingerprint": "df4fa6648b971cbcfb43c70ac9a2cb0ab21bbd93401894668f50a14832f08111"
+    }
+  ]
+}

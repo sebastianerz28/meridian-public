@@ -1,0 +1,7 @@
+{
+  "steady_fit_seconds_per_seed_pair": 0.0012965497138079315,
+  "steady_fit_milliseconds_per_seed_pair": 1.2965497138079316,
+  "steady_fit_intercept_seconds": 1.40342822240803,
+  "steady_fit_r_squared": 0.9999908297355238,
+  "full_to_inprocess_pair_cost_ratio": 418.9945660033753
+}
